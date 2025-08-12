@@ -38,6 +38,7 @@ session_start();
                 <li class="nav-item"><a class="nav-link" href="unidades.php">Unidades</a></li>
                 <li class="nav-item"><a class="nav-link" href="equipamentos.php">Equipamentos</a></li>
 				<li class="nav-item"><a class="nav-link" href="formacoes.php">Formações</a></li>
+                <li class="nav-item"><a class="nav-link" href="visitas.php">Visitas</a></li>
                 <li class="nav-item"><a class="nav-link" href="relatorios.php">Relatórios</a></li>
 
                 <?php if (isset($_SESSION["user"])): ?> <!-- Se o usuário estiver logado -->
