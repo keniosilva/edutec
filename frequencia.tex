@@ -1,0 +1,66 @@
+% Setting up document class and basic packages
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{booktabs}
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+}
+\usepackage{noto}
+
+% Configuring document title and headers
+\title{Documento de Frequência de Formação}
+\author{Unidade Escolar}
+\date{\today}
+
+\begin{document}
+
+% Creating title page
+\maketitle
+
+% Adding introduction section
+\section{Detalhes da Formação}
+\textbf{Nome da Formação:} Nome da Formação \\
+\textbf{Unidade Escolar:} Nome da Unidade Escolar \\
+\textbf{Data de Início:} Data de Início \\
+\textbf{Data de Fim:} Data de Fim \\
+\textbf{Descrição:} Descrição detalhada da formação.
+
+% Adding frequency table
+\section{Registro de Frequência}
+\begin{table}[h]
+\centering
+\begin{tabular}{llc}
+\toprule
+\textbf{Nome do Participante} & \textbf{Cargo/Função} & \textbf{Presença} \\
+\midrule
+Participante 1 & Cargo 1 & $\square$ Presente \\
+Participante 2 & Cargo 2 & $\square$ Presente \\
+Participante 3 & Cargo 3 & $\square$ Presente \\
+\bottomrule
+\end{tabular}
+\caption{Lista de Frequência}
+\end{table}
+
+% Adding observations section
+\section{Observações}
+Espaço para observações adicionais sobre a formação, como comentários sobre a participação, dificuldades encontradas, ou outras informações relevantes.
+
+% Adding signature section
+\section{Assinaturas}
+\begin{itemize}
+    \item \textbf{Coordenador(a):} ______________________________ \\
+    \item \textbf{Responsável pela Formação:} ______________________________ \\
+\end{itemize}
+
+\end{document}
