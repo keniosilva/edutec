@@ -1,0 +1,4 @@
+[18-Aug-2025 21:39:57 America/Sao_Paulo] PHP Fatal error:  Uncaught Error: Call to a member function bind_param() on bool in E:\home\itedtecnol\itedtecnologia.com.br\web\edutec\login.php:60
+Stack trace:
+#0 {main}
+  thrown in E:\home\itedtecnol\itedtecnologia.com.br\web\edutec\login.php on line 60

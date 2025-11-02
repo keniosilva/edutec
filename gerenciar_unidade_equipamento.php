@@ -37,13 +37,13 @@ if (!$equipamentos) {
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['acao']) && $_POST['acao'] == 'cadastrar') {
     $id_equipamento = $_POST['equipamento'];
     $quantidade = $_POST['quantidade'];
-    $serie = $_POST['serie'];
+    $numero_serie = $_POST['numero_serie']; // Alterado de 'serie' para 'numero_serie'
     $patrimonio = $_POST['patrimonio'];
 
     // Verificar se o número de série ou o patrimônio já existem na base de dados
-    $sql_verifica = "SELECT id_unidade FROM unidade_equipamentos WHERE serie = ? OR patrimonio = ?";
+    $sql_verifica = "SELECT id_registro FROM unidade_equipamentos WHERE numero_serie = ? OR patrimonio = ?"; // Alterado de 'serie' para 'numero_serie'
     $stmt_verifica = $conn->prepare($sql_verifica);
-    $stmt_verifica->bind_param("ss", $serie, $patrimonio);
+    $stmt_verifica->bind_param("ss", $numero_serie, $patrimonio); // Alterado de 'serie' para 'numero_serie'
     $stmt_verifica->execute();
     $resultado_verifica = $stmt_verifica->get_result();
 
@@ -53,13 +53,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['acao']) && $_POST['aca
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
               </div>';
     } else {
-        $sql = "INSERT INTO unidade_equipamentos (id_unidade, id_equipamento, quantidade, serie, patrimonio) 
-                VALUES (?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO unidade_equipamentos (id_unidade, id_equipamento, quantidade, numero_serie, patrimonio) 
+                VALUES (?, ?, ?, ?, ?)"; // Alterado de 'serie' para 'numero_serie'
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
             die("Erro ao preparar a query: " . $conn->error);
         }
-        $stmt->bind_param("iiiss", $id_unidade, $id_equipamento, $quantidade, $serie, $patrimonio);
+        $stmt->bind_param("iiiss", $id_unidade, $id_equipamento, $quantidade, $numero_serie, $patrimonio); // Alterado de 'serie' para 'numero_serie'
         if ($stmt->execute()) {
             echo '<div class="alert alert-success alert-dismissible fade show" role="alert">
                     Equipamento cadastrado com sucesso!
@@ -79,40 +79,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['acao']) && $_POST['aca
 
 // Processar o formulário de edição
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['acao']) && $_POST['acao'] == 'editar') {
-    $id_equipamento_antigo = $_POST['id_equipamento_antigo'];
+    $id_registro = $_POST['id_registro']; // Adicionado para identificar o registro a ser editado
     $id_equipamento_novo = $_POST['equipamento'];
     $quantidade = $_POST['quantidade'];
-    $serie = $_POST['serie'];
+    $numero_serie = $_POST['numero_serie']; // Alterado de 'serie' para 'numero_serie'
     $patrimonio = $_POST['patrimonio'];
 
-    if ($id_equipamento_novo != $id_equipamento_antigo) {
-        $sql_verifica = "SELECT id_unidade FROM unidade_equipamentos WHERE id_unidade = ? AND id_equipamento = ?";
-        $stmt_verifica = $conn->prepare($sql_verifica);
-        $stmt_verifica->bind_param("ii", $id_unidade, $id_equipamento_novo);
-        $stmt_verifica->execute();
-        $resultado_verifica = $stmt_verifica->get_result();
+    // Verificar se o número de série ou o patrimônio já existem para OUTROS registros
+    $sql_verifica = "SELECT id_registro FROM unidade_equipamentos WHERE (numero_serie = ? OR patrimonio = ?) AND id_registro != ?"; // Alterado de 'serie' para 'numero_serie'
+    $stmt_verifica = $conn->prepare($sql_verifica);
+    $stmt_verifica->bind_param("ssi", $numero_serie, $patrimonio, $id_registro); // Alterado de 'serie' para 'numero_serie'
+    $stmt_verifica->execute();
+    $resultado_verifica = $stmt_verifica->get_result();
 
-        if ($resultado_verifica->num_rows > 0) {
-            echo '<div class="alert alert-warning alert-dismissible fade show" role="alert">Este equipamento já está cadastrado para esta unidade!<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
-            $stmt_verifica->close();
-        } else {
-            $stmt_verifica->close();
-            $sql = "UPDATE unidade_equipamentos SET id_equipamento = ?, quantidade = ?, serie = ?, patrimonio = ? WHERE id_unidade = ? AND id_equipamento = ?";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("iissii", $id_equipamento_novo, $quantidade, $serie, $patrimonio, $id_unidade, $id_equipamento_antigo);
-            if ($stmt->execute()) {
-                echo '<div class="alert alert-success alert-dismissible fade show" role="alert">Equipamento atualizado com sucesso!<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
-            } else {
-                echo '<div class="alert alert-danger alert-dismissible fade show" role="alert">Erro ao atualizar: ' . $conn->error . '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
-            }
-            $stmt->close();
-        }
+    if ($resultado_verifica->num_rows > 0) {
+        echo '<div class="alert alert-warning alert-dismissible fade show" role="alert">Equipamento com este número de série ou patrimônio já está cadastrado em outro registro!<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+        $stmt_verifica->close();
     } else {
-        $sql = "UPDATE unidade_equipamentos SET quantidade = ?, serie = ?, patrimonio = ? WHERE id_unidade = ? AND id_equipamento = ?";
+        $stmt_verifica->close();
+        $sql = "UPDATE unidade_equipamentos SET id_equipamento = ?, quantidade = ?, numero_serie = ?, patrimonio = ? WHERE id_registro = ?"; // Alterado de 'serie' para 'numero_serie' e WHERE clause
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("issii", $quantidade, $serie, $patrimonio, $id_unidade, $id_equipamento_antigo);
+        $stmt->bind_param("iissi", $id_equipamento_novo, $quantidade, $numero_serie, $patrimonio, $id_registro); // Alterado de 'serie' para 'numero_serie'
         if ($stmt->execute()) {
-            echo '<div class="alert alert-success alert-dismissible fade show" role="alert">Quantidade e dados atualizados com sucesso!<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+            echo '<div class="alert alert-success alert-dismissible fade show" role="alert">Equipamento atualizado com sucesso!<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
         } else {
             echo '<div class="alert alert-danger alert-dismissible fade show" role="alert">Erro ao atualizar: ' . $conn->error . '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
         }
@@ -188,8 +177,8 @@ $registros = $stmt_registros->get_result();
                         <input type="number" name="quantidade" class="form-control" min="0" required>
                     </div>
                     <div class="col-md-2 mb-3">
-                        <label for="serie" class="form-label fw-bold">Serial</label>
-                        <input type="text" name="serie" class="form-control" required>
+                        <label for="numero_serie" class="form-label fw-bold">Número de Série</label>
+                        <input type="text" name="numero_serie" class="form-control" required>
                     </div>
                     <div class="col-md-2 mb-3">
                         <label for="patrimonio" class="form-label fw-bold">Patrimônio</label>
@@ -209,7 +198,7 @@ $registros = $stmt_registros->get_result();
                         <tr>
                             <th>Equipamento</th>
                             <th>Quantidade</th>
-                            <th>Serial</th>
+                            <th>Número de Série</th>
                             <th>Patrimônio</th>
                             <th>Ações</th>
                         </tr>
@@ -217,34 +206,34 @@ $registros = $stmt_registros->get_result();
                     <tbody>
                         <?php if ($registros->num_rows > 0): ?>
                             <?php while ($registro = $registros->fetch_assoc()): ?>
-                                <tr id="row-<?php echo $registro['id_equipamento']; ?>">
+                                <tr id="row-<?php echo $registro['id_registro']; ?>">
                                     <td><?php echo $registro['nome_equipamento']; ?></td>
                                     <td><?php echo $registro['quantidade']; ?></td>
-                                    <td><?php echo $registro['serie']; ?></td>
+                                    <td><?php echo $registro['numero_serie']; ?></td>
                                     <td><?php echo $registro['patrimonio']; ?></td>
                                     <td>
                                         <button class="btn btn-outline-warning btn-sm" 
                                                 data-bs-toggle="modal" 
-                                                data-bs-target="#modalEdicao-<?php echo $registro['id_equipamento']; ?>">
+                                                data-bs-target="#modalEdicao-<?php echo $registro['id_registro']; ?>">
                                             <i class="bi bi-pencil"></i> Editar
                                         </button>
                                     </td>
                                 </tr>
                                 <!-- Modal de Edição para cada equipamento -->
-<div class="modal fade" id="modalEdicao-<?php echo $registro['id_equipamento']; ?>" tabindex="-1" aria-labelledby="modalEdicaoLabel-<?php echo $registro['id_equipamento']; ?>" aria-hidden="true">
+<div class="modal fade" id="modalEdicao-<?php echo $registro['id_registro']; ?>" tabindex="-1" aria-labelledby="modalEdicaoLabel-<?php echo $registro['id_registro']; ?>" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalEdicaoLabel-<?php echo $registro['id_equipamento']; ?>">Editar Equipamento</h5>
+                <h5 class="modal-title" id="modalEdicaoLabel-<?php echo $registro['id_registro']; ?>">Editar Equipamento</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="POST" id="formEdicao-<?php echo $registro['id_equipamento']; ?>">
+                <form method="POST" id="formEdicao-<?php echo $registro['id_registro']; ?>">
                     <input type="hidden" name="acao" value="editar">
-                    <input type="hidden" name="id_equipamento_antigo" value="<?php echo $registro['id_equipamento']; ?>">
+                    <input type="hidden" name="id_registro" value="<?php echo $registro['id_registro']; ?>">
                     <div class="mb-3">
-                        <label for="equipamento-<?php echo $registro['id_equipamento']; ?>" class="form-label fw-bold">Equipamento</label>
-                        <select name="equipamento" id="equipamento-<?php echo $registro['id_equipamento']; ?>" class="form-select" required>
+                        <label for="equipamento-<?php echo $registro['id_registro']; ?>" class="form-label fw-bold">Equipamento</label>
+                        <select name="equipamento" id="equipamento-<?php echo $registro['id_registro']; ?>" class="form-select" required>
                             <option value="">Selecione um equipamento</option>
                             <?php 
                             $equipamentos->data_seek(0);
@@ -257,22 +246,22 @@ $registros = $stmt_registros->get_result();
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="quantidade-<?php echo $registro['id_equipamento']; ?>" class="form-label fw-bold">Quantidade</label>
-                        <input type="number" name="quantidade" id="quantidade-<?php echo $registro['id_equipamento']; ?>" class="form-control" min="0" value="<?php echo $registro['quantidade']; ?>" required>
+                        <label for="quantidade-<?php echo $registro['id_registro']; ?>" class="form-label fw-bold">Quantidade</label>
+                        <input type="number" name="quantidade" id="quantidade-<?php echo $registro['id_registro']; ?>" class="form-control" min="0" value="<?php echo $registro['quantidade']; ?>" required>
                     </div>
                     <div class="mb-3">
-                        <label for="serie-<?php echo $registro['id_equipamento']; ?>" class="form-label fw-bold">Serial</label>
-                        <input type="text" name="serie" id="serie-<?php echo $registro['id_equipamento']; ?>" class="form-control" value="<?php echo $registro['serie']; ?>" required>
+                        <label for="numero_serie-<?php echo $registro['id_registro']; ?>" class="form-label fw-bold">Número de Série</label>
+                        <input type="text" name="numero_serie" id="numero_serie-<?php echo $registro['id_registro']; ?>" class="form-control" value="<?php echo $registro['numero_serie']; ?>" required>
                     </div>
                     <div class="mb-3">
-                        <label for="patrimonio-<?php echo $registro['id_equipamento']; ?>" class="form-label fw-bold">Patrimônio</label>
-                        <input type="text" name="patrimonio" id="patrimonio-<?php echo $registro['id_equipamento']; ?>" class="form-control" value="<?php echo $registro['patrimonio']; ?>" required>
+                        <label for="patrimonio-<?php echo $registro['id_registro']; ?>" class="form-label fw-bold">Patrimônio</label>
+                        <input type="text" name="patrimonio" id="patrimonio-<?php echo $registro['id_registro']; ?>" class="form-control" value="<?php echo $registro['patrimonio']; ?>" required>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle"></i> Cancelar</button>
-                <button type="submit" form="formEdicao-<?php echo $registro['id_equipamento']; ?>" class="btn btn-primary"><i class="bi bi-save"></i> Salvar</button>
+                <button type="submit" form="formEdicao-<?php echo $registro['id_registro']; ?>" class="btn btn-primary"><i class="bi bi-save"></i> Salvar</button>
             </div>
         </div>
     </div>
@@ -298,3 +287,5 @@ include 'footer.php';
 ?>
 </body>
 </html>
+
+

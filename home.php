@@ -1,13 +1,36 @@
 <?php 
-include 'header.php'; 
-require 'conexao.php'; // Arquivo de conexão com o banco de dados
+require_once 'auth_check.php'; // Verificar se usuário está logado
+require_once 'header.php'; 
+require_once 'conexao.php';
 
-// Consultar formações para verificar alertas
+// Verificar se o usuário está logado
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+
+// Obter informações do usuário logado
+$user_id = $_SESSION['user_id'];
+$user_name = $_SESSION['user'] ?? 'Usuário';
+$user_city_id = $_SESSION['user_id_cidade'] ?? null;
+$user_city_name = $_SESSION['user_nome_cidade'] ?? 'Cidade não identificada';
+
+// Se não há cidade definida, usar Bayeux como padrão (ID = 1)
+if (!$user_city_id) {
+    $user_city_id = 1;
+    $user_city_name = 'Bayeux';
+}
+
+// Consultar formações para verificar alertas (filtrado por cidade)
 $sql_formacoes = "SELECT f.*, u.nome_escola 
                   FROM formacoes f 
                   INNER JOIN unidade_escolar u ON f.id_unidade = u.id_unidade 
+                  WHERE u.id_cidade = ?
                   ORDER BY f.id_unidade, f.data_fim DESC";
-$result_formacoes = $conn->query($sql_formacoes);
+$stmt_formacoes = $conn->prepare($sql_formacoes);
+$stmt_formacoes->bind_param("i", $user_city_id);
+$stmt_formacoes->execute();
+$result_formacoes = $stmt_formacoes->get_result();
 
 $formacoes = [];
 $alertas_formacao = [];
@@ -53,25 +76,40 @@ if ($result_formacoes->num_rows > 0) {
     }
 }
 
-// Consultar unidades com Sala Google (habilita = 1)
-$sql_google = "SELECT id_unidade, nome_escola FROM Unidade_Escolar WHERE habilita = 1 ORDER BY nome_escola";
-$result_google = $conn->query($sql_google);
+// Consultar unidades com Sala Google (habilita = 1) filtrado por cidade
+$sql_google = "SELECT id_unidade, nome_escola FROM unidade_escolar WHERE habilita = 1 AND id_cidade = ? ORDER BY nome_escola";
+$stmt_google = $conn->prepare($sql_google);
+$stmt_google->bind_param("i", $user_city_id);
+$stmt_google->execute();
+$result_google = $stmt_google->get_result();
 
-// Consultar unidades que apenas recebem equipamentos (outros = 1)
-$sql_equipamentos = "SELECT id_unidade, nome_escola FROM Unidade_Escolar WHERE outros = 1 ORDER BY nome_escola";
-$result_equipamentos = $conn->query($sql_equipamentos);
+// Consultar unidades que apenas recebem equipamentos (outros = 1) filtrado por cidade
+$sql_equipamentos = "SELECT id_unidade, nome_escola FROM unidade_escolar WHERE outros = 1 AND id_cidade = ? ORDER BY nome_escola";
+$stmt_equipamentos = $conn->prepare($sql_equipamentos);
+$stmt_equipamentos->bind_param("i", $user_city_id);
+$stmt_equipamentos->execute();
+$result_equipamentos = $stmt_equipamentos->get_result();
 
-// Consultar unidades que apenas recebem equipamentos (outros = 2)
-$sql_independentes = "SELECT id_unidade, nome_escola FROM Unidade_Escolar WHERE independentes = 1 ORDER BY nome_escola";
-$result_independentes = $conn->query($sql_independentes);
+// Consultar unidades independentes (independentes = 1) filtrado por cidade
+$sql_independentes = "SELECT id_unidade, nome_escola FROM unidade_escolar WHERE independentes = 1 AND id_cidade = ? ORDER BY nome_escola";
+$stmt_independentes = $conn->prepare($sql_independentes);
+$stmt_independentes->bind_param("i", $user_city_id);
+$stmt_independentes->execute();
+$result_independentes = $stmt_independentes->get_result();
 
-// Consultar unidades que apenas recebem equipamentos (outros = 3)
-$sql_portatil = "SELECT id_unidade, nome_escola FROM Unidade_Escolar WHERE portatil = 1 ORDER BY nome_escola";
-$result_portatil = $conn->query($sql_portatil);
+// Consultar unidades com lousa portátil (portatil = 1) filtrado por cidade
+$sql_portatil = "SELECT id_unidade, nome_escola FROM unidade_escolar WHERE portatil = 1 AND id_cidade = ? ORDER BY nome_escola";
+$stmt_portatil = $conn->prepare($sql_portatil);
+$stmt_portatil->bind_param("i", $user_city_id);
+$stmt_portatil->execute();
+$result_portatil = $stmt_portatil->get_result();
 
-// Consultar unidades que apenas recebem equipamentos (outros = 4)
-$sql_lcd = "SELECT id_unidade, nome_escola FROM Unidade_Escolar WHERE lcd = 1 ORDER BY nome_escola";
-$result_lcd = $conn->query($sql_lcd);
+// Consultar unidades com LCD (lcd = 1) filtrado por cidade
+$sql_lcd = "SELECT id_unidade, nome_escola FROM unidade_escolar WHERE lcd = 1 AND id_cidade = ? ORDER BY nome_escola";
+$stmt_lcd = $conn->prepare($sql_lcd);
+$stmt_lcd->bind_param("i", $user_city_id);
+$stmt_lcd->execute();
+$result_lcd = $stmt_lcd->get_result();
 ?>
 
 <!DOCTYPE html>
@@ -79,7 +117,7 @@ $result_lcd = $conn->query($sql_lcd);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Edutec</title>
+    <title>Sistema Edutec - <?php echo htmlspecialchars($user_city_name); ?></title>
     <style>
         body {
             background-color: #d3d8de;
@@ -118,6 +156,24 @@ $result_lcd = $conn->query($sql_lcd);
             background-color: #e9f1fb;
             color: #1e4976;
             border-left: 3px solid #b3d7ff;
+        }
+
+        .bg-light-purple {
+            background-color: #f3e5f5;
+            color: #6a1b9a;
+            border-left: 3px solid #ce93d8;
+        }
+
+        .bg-light-orange {
+            background-color: #fff3e0;
+            color: #e65100;
+            border-left: 3px solid #ffb74d;
+        }
+
+        .bg-light-red {
+            background-color: #ffebee;
+            color: #c62828;
+            border-left: 3px solid #ef5350;
         }
 
         .card-body {
@@ -169,12 +225,178 @@ $result_lcd = $conn->query($sql_lcd);
         .alert-formacao .btn {
             margin-top: 10px;
         }
+
+        .city-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+            border: 1px solid #ffc107;
+        }
+
+        .btn-warning:hover {
+            background-color: #e0a800;
+            border-color: #d39e00;
+        }
+
+        .btn-outline-secondary {
+            background-color: transparent;
+            color: #6c757d;
+            border: 1px solid #6c757d;
+        }
+
+        .btn-outline-secondary:hover {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.875rem;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: -10px;
+        }
+
+        .col-md-4 {
+            flex: 0 0 33.333333%;
+            max-width: 33.333333%;
+            padding: 10px;
+        }
+
+        .col-12 {
+            flex: 0 0 100%;
+            max-width: 100%;
+            padding: 10px;
+        }
+
+        .mb-4 {
+            margin-bottom: 1.5rem;
+        }
+
+        .h-100 {
+            height: 100%;
+        }
+
+        .shadow-sm {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .text-decoration-none {
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .col-md-4 {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+            
+            .user-info {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
     <div class="container mt-4">
-        <h2>Bem-vindo ao Sistema EDUTEC</h2>
-        <p>Gerenciamento de equipamentos</p>
+        <!-- Cabeçalho da cidade -->
+        <div class="city-header">
+            <h1>Sistema EDUTEC - <?php echo htmlspecialchars($user_city_name); ?></h1>
+            <p>Gerenciamento de equipamentos educacionais</p>
+        </div>
+
+        <!-- Informações do usuário -->
+        <div class="user-info">
+            <div>
+                <strong>📊 Resumo Geral:</strong> <?php echo htmlspecialchars($user_city_name); ?> | 
+                <strong>📅 Data:</strong> <?php echo date('d/m/Y'); ?>
+            </div>
+            <div>
+                <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">📈 Dashboard Completo</a>
+            </div>
+        </div>
+
+        <!-- Estatísticas rápidas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number"><?php echo $result_google->num_rows; ?></div>
+                <div class="stat-label">Salas Google</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number"><?php echo $result_equipamentos->num_rows; ?></div>
+                <div class="stat-label">Lousas Interativas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number"><?php echo $result_portatil->num_rows; ?></div>
+                <div class="stat-label">Kits Portáteis</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number"><?php echo $result_lcd->num_rows; ?></div>
+                <div class="stat-label">Kits LCD</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number"><?php echo $result_independentes->num_rows; ?></div>
+                <div class="stat-label">Setores Independentes</div>
+            </div>
+        </div>
 
         <!-- Alertas de Formação -->
         <?php if (!empty($alertas_formacao)): ?>
@@ -204,7 +426,7 @@ $result_lcd = $conn->query($sql_lcd);
         <?php endif; ?>
 
         <!-- Unidades com Sala Google -->
-        <h2>Unidades com Salas Google</h2>
+        <h2>🏫 Unidades com Salas Google</h2>
         <div class="row mt-4">
             <?php
             if ($result_google->num_rows > 0) {
@@ -220,13 +442,13 @@ $result_lcd = $conn->query($sql_lcd);
                     echo "</div>";
                 }
             } else {
-                echo "<div class='col-12'><p class='no-results'>Nenhuma unidade com Sala Google encontrada.</p></div>";
+                echo "<div class='col-12'><p class='no-results'>Nenhuma unidade com Sala Google encontrada em " . htmlspecialchars($user_city_name) . ".</p></div>";
             }
             ?>
         </div>
 
-        <!-- Unidades que apenas recebem equipamentos -->
-        <h2>Unidades com Lousas Interativa</h2>
+        <!-- Unidades com Lousas Interativas -->
+        <h2>📱 Unidades com Lousas Interativas</h2>
         <div class="row mt-4">
             <?php
             if ($result_equipamentos->num_rows > 0) {
@@ -242,19 +464,19 @@ $result_lcd = $conn->query($sql_lcd);
                     echo "</div>";
                 }
             } else {
-                echo "<div class='col-12'><p class='no-results'>Nenhuma unidade apenas com equipamentos encontrada.</p></div>";
+                echo "<div class='col-12'><p class='no-results'>Nenhuma unidade com lousas interativas encontrada em " . htmlspecialchars($user_city_name) . ".</p></div>";
             }
             ?>
         </div>
-		
-		<!-- Unidades que apenas recebem equipamentos -->
-        <h2>Unidades com Kit Lousa Portátil</h2>
+        
+        <!-- Unidades com Kit Lousa Portátil -->
+        <h2>💼 Unidades com Kit Lousa Portátil</h2>
         <div class="row mt-4">
             <?php
             if ($result_portatil->num_rows > 0) {
                 while ($row = $result_portatil->fetch_assoc()) {
                     echo "<div class='col-md-4 mb-4'>";
-                    echo "<div class='card h-100 shadow-sm bg-light-green'>";
+                    echo "<div class='card h-100 shadow-sm bg-light-purple'>";
                     echo "<a href='gerenciar_unidade_equipamento.php?id_unidade={$row['id_unidade']}' class='text-decoration-none'>";
                     echo "<div class='card-body'>";
                     echo "<h5 class='card-title'>{$row['nome_escola']}</h5>";
@@ -264,18 +486,19 @@ $result_lcd = $conn->query($sql_lcd);
                     echo "</div>";
                 }
             } else {
-                echo "<div class='col-12'><p class='no-results'>Nenhuma unidade apenas com equipamentos encontrada.</p></div>";
+                echo "<div class='col-12'><p class='no-results'>Nenhuma unidade com kit lousa portátil encontrada em " . htmlspecialchars($user_city_name) . ".</p></div>";
             }
             ?>
         </div>
-		
-		<h2>Setores independentes</h2>
+        
+        <!-- Setores independentes -->
+        <h2>🏢 Setores Independentes</h2>
         <div class="row mt-4">
             <?php
             if ($result_independentes->num_rows > 0) {
                 while ($row = $result_independentes->fetch_assoc()) {
                     echo "<div class='col-md-4 mb-4'>";
-                    echo "<div class='card h-100 shadow-sm bg-light-blue'>";
+                    echo "<div class='card h-100 shadow-sm bg-light-orange'>";
                     echo "<a href='gerenciar_unidade_equipamento.php?id_unidade={$row['id_unidade']}' class='text-decoration-none'>";
                     echo "<div class='card-body'>";
                     echo "<h5 class='card-title'>{$row['nome_escola']}</h5>";
@@ -285,17 +508,19 @@ $result_lcd = $conn->query($sql_lcd);
                     echo "</div>";
                 }
             } else {
-                echo "<div class='col-12'><p class='no-results'>Nenhuma unidade independente encontrada.</p></div>";
+                echo "<div class='col-12'><p class='no-results'>Nenhum setor independente encontrado em " . htmlspecialchars($user_city_name) . ".</p></div>";
             }
             ?>
         </div>
-		<h2>Kit Lousa LCD</h2>
+        
+        <!-- Kit Lousa LCD -->
+        <h2>🖥️ Kit Lousa LCD</h2>
         <div class="row mt-4">
             <?php
             if ($result_lcd->num_rows > 0) {
                 while ($row = $result_lcd->fetch_assoc()) {
                     echo "<div class='col-md-4 mb-4'>";
-                    echo "<div class='card h-100 shadow-sm bg-light-blue'>";
+                    echo "<div class='card h-100 shadow-sm bg-light-red'>";
                     echo "<a href='gerenciar_unidade_equipamento.php?id_unidade={$row['id_unidade']}' class='text-decoration-none'>";
                     echo "<div class='card-body'>";
                     echo "<h5 class='card-title'>{$row['nome_escola']}</h5>";
@@ -305,17 +530,22 @@ $result_lcd = $conn->query($sql_lcd);
                     echo "</div>";
                 }
             } else {
-                echo "<div class='col-12'><p class='no-results'>Nenhuma unidade com lousa lcd encontrada.</p></div>";
+                echo "<div class='col-12'><p class='no-results'>Nenhuma unidade com lousa LCD encontrada em " . htmlspecialchars($user_city_name) . ".</p></div>";
             }
             ?>
         </div>
     </div>
 
-
-
 <?php 
+// Fechar statements
+$stmt_formacoes->close();
+$stmt_google->close();
+$stmt_equipamentos->close();
+$stmt_independentes->close();
+$stmt_portatil->close();
+$stmt_lcd->close();
 $conn->close();
-include 'footer.php'; 
 ?>
 </body>
 </html>
+
